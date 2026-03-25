@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+
+<style>
+body { margin:0; font-family:Arial; background:#f4f6f9;}
+.container { padding:20px; max-width:1400px; margin:auto;}
+.layout { display:flex; gap:20px;}
+.panel { width:300px; background:white; padding:15px; border-radius:10px; z-index:100;}
+.viewer { flex:1; height:750px; background:white; border-radius:10px;}
+button { margin:5px; padding:8px; background:#2563eb; color:white; border:none; border-radius:6px;}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>Protein-Ligand Viewer</h2>
+
+<div class="layout">
+
+<div class="panel">
+<label><input type="checkbox" id="p" checked onchange="update()"> Protéine</label><br>
+<label><input type="checkbox" id="po" checked onchange="update()"> Poche</label><br>
+<label><input type="checkbox" id="l" checked onchange="update()"> Ligand</label><br>
+<label><input type="checkbox" id="h" checked onchange="update()"> Liaisons H</label><br>
+
+<button onclick="zoomLig()">Zoom ligand</button>
+</div>
+
+<div id="viewer" class="viewer"></div>
+
+</div>
+</div>
+
+<script>
+
+let viewer, protein, ligand;
+
+async function init(){
+
+const p = await fetch("./1a4l_protein.pdb").then(r=>r.text());
+const l = await fetch("./ligand_only.pdb").then(r=>r.text());
+
+viewer = $3Dmol.createViewer("viewer",{backgroundColor:"white"});
+
+protein = viewer.addModel(p,"pdb");
+ligand = viewer.addModel(l,"pdb");
+
+update();
+
+viewer.zoomTo({model:1});
+viewer.zoom(1.2);
+viewer.render();
+}
+
+function update(){
+
+viewer.setStyle({}, {});
+viewer.removeAllShapes();
+
+// PROTEINE
+if(document.getElementById("p").checked){
+viewer.setStyle(
+{model:0, chain:"A"},
+{cartoon:{color:"#e6d3a3", opacity:0.8}}
+);
+}
+
+// LIGAND
+if(document.getElementById("l").checked){
+viewer.setStyle(
+{model:1},
+{stick:{colorscheme:"cyanCarbon", radius:0.35}}
+);
+}
+
+// POCHE
+if(document.getElementById("po").checked){
+viewer.setStyle(
+{
+model:0,
+chain:"A",
+within:{distance:6, sel:{model:1}}
+},
+{
+stick:{color:"#ff00ff", radius:0.45}
+}
+);
+}
+
+// LIAISONS H
+if(document.getElementById("h").checked){
+
+const lig = ligand.selectedAtoms({});
+const prot = protein.selectedAtoms({chain:"A"});
+
+for(let la of lig){
+for(let pa of prot){
+
+let dx=la.x-pa.x;
+let dy=la.y-pa.y;
+let dz=la.z-pa.z;
+let d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+
+if(d<6){
+
+viewer.addLine({
+start:la,
+end:pa,
+dashed:true,
+color:"black",
+linewidth:30
+});
+}
+}
+}
+}
+
+viewer.render();
+}
+
+function zoomLig(){
+viewer.zoomTo({model:1});
+viewer.zoom(1.3);
+viewer.render();
+}
+
+init();
+
+</script>
+</body>
+</html>
